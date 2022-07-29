@@ -1,7 +1,8 @@
 package indigo
 
 import kotlin.system.exitProcess
-
+val Suits = listOf('♠', '♥', '♦', '♣')
+val Ranks = listOf('A','2','3','4','5','6','7','8','9','1','J','Q','K')
 val ALL_CARDS = listOf(
     "A♠","2♠","3♠","4♠","5♠","6♠","7♠","8♠","9♠","10♠","J♠","Q♠","K♠",
     "A♥","2♥","3♥","4♥","5♥","6♥","7♥","8♥","9♥","10♥","J♥","Q♥","K♥",
@@ -15,9 +16,9 @@ open class DecType(var cards: MutableList<String>, var score: Int = 0, var noOfW
     fun get(noOfCards: Int): MutableList<String>{
         val cardsGotten = mutableListOf<String>()
         for (i in 0 until noOfCards) cardsGotten.add(cards[i])
-            repeat(noOfCards) {
-                cards.removeAt(0)
-            }
+        repeat(noOfCards) {
+            cards.removeAt(0)
+        }
         return cardsGotten
     }
     fun add(newCards: MutableList<String>) = cards.addAll(newCards)
@@ -38,16 +39,44 @@ open class DecType(var cards: MutableList<String>, var score: Int = 0, var noOfW
 class Table(cards: MutableList<String>): DecType(cards){
     fun onTop() = cards[cards.lastIndex]
     fun addCard(card: String) = cards.add(card)
-    fun topSymbol() = cards[cards.lastIndex].last()
     fun showCards() {
         if (this.count() != 0) println("${this.count()} cards on the table, and the top card is ${this.onTop()}")
         else println("No cards on the table")
     }
 }
 class Computer(cards: MutableList<String>): DecType(cards){
-    fun tell(): Int {
-        println("Computer plays ${cards[0]}")
-        return 0
+    fun choose(table: Table): Int {
+        for (i in 0 until this.count()) print("${cards[i]} ")
+        println()
+        if (cards.size == 1) return 0
+        if (table.count() == 0) return chosen(cards)
+        val candidateCards = mutableListOf<String>()
+        for (i in 0 until cards.size) if (checkIfSame(cards[i],table.onTop())) candidateCards.add(cards[i])
+        return if (candidateCards.isNotEmpty()) cards.indexOf(candidateCards[chosen(candidateCards)]) else chosen(cards)
+    }
+    private fun chosen(cards: MutableList<String>): Int{
+        val cardsInSuits = MutableList(4){ mutableListOf<Int>() }
+        for (i in Suits.indices) {
+            for (j in cards.indices) if (cards[j].last() == Suits[i]) cardsInSuits[i].add(j)
+        }
+        var maxNoOfSuits = 0
+        var biggestSuit = -1
+        for (i in cardsInSuits.indices) if (maxNoOfSuits < cardsInSuits[i].size) {
+            maxNoOfSuits = cardsInSuits[i].size
+            biggestSuit = i
+        }
+        if (maxNoOfSuits != 1) return cardsInSuits[biggestSuit][0]
+        val cardsInRanks = MutableList(13){ mutableListOf<Int>() }
+        for (i in Ranks.indices) {
+            for (j in cards.indices) if (cards[j][0] == Ranks[i]) cardsInRanks[i].add(j)
+        }
+        var maxNoOfRanks = 0
+        var biggestRank = -1
+        for (i in cardsInRanks.indices) if (maxNoOfRanks < cardsInRanks[i].size) {
+            maxNoOfRanks = cardsInRanks[i].size
+            biggestRank = i
+        }
+        return if (maxNoOfRanks != 1) cardsInRanks[biggestRank][0] else 0
     }
 }
 class Player(cards: MutableList<String>, var turn: Int = 0): DecType(cards){
@@ -91,7 +120,7 @@ fun main() {
         var matches = false
         if (i % 2 == player.turn) {
             val droppingCard = player.drop(player.pick()) // picking card
-            if(table.count() != 0) matches = checkIfSame(table, droppingCard)
+            if(table.count() != 0) matches = checkIfSame(table.onTop(), droppingCard)
             table.addCard(droppingCard)
             if (matches) {
                 player.addScore(table.get(table.count()))
@@ -101,8 +130,9 @@ fun main() {
                 println()
             }
         } else {
-            val droppingCard = computer.drop(computer.tell())
-            if(table.count() != 0) matches = checkIfSame(table, droppingCard)
+            val droppingCard = computer.drop(computer.choose(table))
+            println("Computer plays $droppingCard")
+            if(table.count() != 0) matches = checkIfSame(table.onTop(), droppingCard)
             table.addCard(droppingCard)
             if (matches) {
                 computer.addScore(table.get(table.count()))
@@ -121,10 +151,10 @@ fun main() {
         i++
     } while (true)
 }
-fun checkIfSame(table: Table, droppedCard: String): Boolean {
-    val suit  = "..?${table.topSymbol()}".toRegex()
-    val rank = "${table.onTop()[0]}.?.?".toRegex()
-    return suit.matches(droppedCard) || rank.matches(droppedCard)
+fun checkIfSame(card1: String, card2: String): Boolean {
+    val suit  = "..?${card1.last()}".toRegex()
+    val rank = "${card1[0]}.?.?".toRegex()
+    return suit.matches(card2) || rank.matches(card2)
 }
 fun showScore(player: Player, computer: Computer) {
     println("Score: Player ${player.score} - Computer ${computer.score}")
